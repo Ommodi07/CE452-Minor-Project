@@ -1,1 +1,43 @@
-.venv
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env.*
+backend/.env
+backend/.env.*
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# Test / coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local app data
+backend/.chroma/
+backend/chroma/
+*.db
+*.sqlite3
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
