@@ -22,7 +22,6 @@ router = APIRouter(prefix="/research", tags=["export"])
 
 _DOCX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
-
 @router.get("/{job_id}/export")
 async def export_report(job_id: str) -> Response:
     report = get_report_store().get(job_id)

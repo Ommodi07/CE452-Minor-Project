@@ -5,9 +5,8 @@ env/
 
 # Environment files
 .env
-.env.*
 backend/.env
-backend/.env.*
+backend/.env
 
 # Python bytecode and caches
 __pycache__/
