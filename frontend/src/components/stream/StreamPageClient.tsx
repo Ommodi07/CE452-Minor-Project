@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { RetroCard } from "@/components/ui/RetroCard";
-import { RetroButton } from "@/components/ui/RetroButton";
-import { RetroBadge } from "@/components/ui/RetroBadge";
+import { PageCard } from "@/components/ui/page-card";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { checkStream, getSession } from "@/lib/api";
 
 interface StreamPageClientProps {
@@ -46,43 +47,43 @@ export function StreamPageClient({ sessionId }: StreamPageClientProps) {
 
   return (
     <div className="space-y-6">
-      <RetroCard
+      <PageCard
         title="Live Stream"
         subtitle={`GET /stream/${sessionId}`}
-        badge={<RetroBadge variant="warn">Preview</RetroBadge>}
+        badge={<Badge variant="warning">Preview</Badge>}
       >
-        <p className="text-sm text-retro-text-dim">
-          Session: <span className="font-mono text-retro-cyan">{sessionId}</span>
+        <p className="text-sm text-muted-foreground">
+          Session: <span className="font-mono font-medium text-foreground">{sessionId}</span>
         </p>
         {sessionStatus && (
           <p className="mt-1 text-sm">
             Session status:{" "}
-            <RetroBadge variant={sessionStatus === "done" ? "ok" : "info"}>{sessionStatus}</RetroBadge>
+            <Badge variant={sessionStatus === "done" ? "success" : "info"}>{sessionStatus}</Badge>
           </p>
         )}
-      </RetroCard>
+      </PageCard>
 
-      <RetroCard title="Stream Endpoint Status">
+      <PageCard title="Stream Endpoint Status">
         {loading ? (
-          <p className="font-terminal text-lg text-retro-amber blink-cursor">Checking stream...</p>
+          <p className="font-head text-lg blink-cursor">Checking stream...</p>
         ) : streamAvailable ? (
-          <p className="text-retro-border-bright">Stream endpoint is available.</p>
+          <p className="font-medium text-green-700">Stream endpoint is available.</p>
         ) : (
           <div className="space-y-4">
-            <div className="retro-panel-inset border-retro-amber p-4">
-              <p className="font-terminal text-lg text-retro-amber">501 — Not Yet Implemented</p>
-              <p className="mt-2 text-sm text-retro-text-dim">{detail}</p>
+            <div className="alert-warning rounded p-4">
+              <p className="font-head text-lg">501 — Not Yet Implemented</p>
+              <p className="mt-2 text-sm">{detail}</p>
             </div>
-            <p className="text-sm text-retro-text">
+            <p className="text-sm">
               The backend streaming endpoint is planned for Server-Sent Events (SSE) to show live
               LangGraph node progress. Until then, use the session viewer or run research synchronously.
             </p>
           </div>
         )}
-      </RetroCard>
+      </PageCard>
 
-      <RetroCard title="Agent Pipeline Visualizer">
-        <p className="mb-4 text-sm text-retro-text-dim">
+      <PageCard title="Agent Pipeline Visualizer">
+        <p className="mb-4 text-sm text-muted-foreground">
           Preview of the planned live graph visualizer — nodes will highlight as agents execute.
         </p>
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
@@ -107,16 +108,16 @@ export function StreamPageClient({ sessionId }: StreamPageClientProps) {
             </div>
           ))}
         </div>
-      </RetroCard>
+      </PageCard>
 
       <div className="flex flex-wrap gap-2">
-        <Link href={`/sessions/${sessionId}`} className="retro-btn">
+        <Link href={`/sessions/${sessionId}`} className={cn(buttonVariants({ variant: "default" }))}>
           View Session
         </Link>
-        <Link href={`/report/${sessionId}`} className="retro-btn retro-btn-secondary">
+        <Link href={`/report/${sessionId}`} className={cn(buttonVariants({ variant: "outline" }))}>
           View Report
         </Link>
-        <Link href="/" className="retro-btn retro-btn-secondary">
+        <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
           New Research
         </Link>
       </div>

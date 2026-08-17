@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ReportViewer } from "@/components/research/ReportViewer";
-import { RetroCard } from "@/components/ui/RetroCard";
+import { PageCard } from "@/components/ui/page-card";
 import { ResearchProgress } from "@/components/research/ResearchProgress";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { getSession, ApiClientError } from "@/lib/api";
 import type { ResearchResponse } from "@/lib/types";
 
@@ -58,17 +60,17 @@ export function ReportPageClient({ sessionId }: ReportPageClientProps) {
 
   if (error || !data) {
     return (
-      <RetroCard title="Report Not Found">
-        <p className="text-retro-red">{error ?? "No report data available."}</p>
+      <PageCard title="Report Not Found">
+        <p className="text-destructive">{error ?? "No report data available."}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href={`/sessions/${sessionId}`} className="retro-btn">
+          <Link href={`/sessions/${sessionId}`} className={cn(buttonVariants({ variant: "default" }))}>
             View Session
           </Link>
-          <Link href="/" className="retro-btn retro-btn-secondary">
+          <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
             Run New Research
           </Link>
         </div>
-      </RetroCard>
+      </PageCard>
     );
   }
 

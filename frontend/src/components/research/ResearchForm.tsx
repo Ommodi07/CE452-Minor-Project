@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { RetroCard } from "@/components/ui/RetroCard";
-import { RetroButton } from "@/components/ui/RetroButton";
+import { Play, Plus } from "lucide-react";
+import { PageCard } from "@/components/ui/page-card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { ResearchProgress } from "./ResearchProgress";
 import { ReportViewer } from "./ReportViewer";
 import { createSession, runResearch, ApiClientError } from "@/lib/api";
@@ -67,18 +72,12 @@ export function ResearchForm() {
 
   return (
     <div className="space-y-6">
-      <RetroCard
-        title="New Research Query"
-        subtitle="POST /research — Multi-agent LangGraph pipeline"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="query" className="mb-2 block font-terminal text-lg text-retro-text-bright">
-              Research Question
-            </label>
-            <textarea
+      <PageCard title="New Research Query" subtitle="POST /research — Multi-agent LangGraph pipeline">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="query">Research Question</Label>
+            <Textarea
               id="query"
-              className="retro-textarea"
               placeholder="Enter your research question..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -89,39 +88,35 @@ export function ResearchForm() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="sessionId" className="mb-2 block text-sm text-retro-text-dim">
-                Session ID (optional)
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="sessionId">Session ID (optional)</Label>
               <div className="flex gap-2">
-                <input
+                <Input
                   id="sessionId"
                   type="text"
-                  className="retro-input"
                   placeholder="Auto-generated if empty"
                   value={sessionId}
                   onChange={(e) => setSessionId(e.target.value)}
                   disabled={loading}
                 />
-                <RetroButton
+                <Button
                   type="button"
                   variant="secondary"
                   onClick={handleCreateSession}
                   disabled={loading || creatingSession}
-                  className="shrink-0 whitespace-nowrap"
+                  className="shrink-0"
                 >
+                  <Plus className="size-4" />
                   {creatingSession ? "..." : "New"}
-                </RetroButton>
+                </Button>
               </div>
             </div>
 
-            <div>
-              <label htmlFor="maxIterations" className="mb-2 block text-sm text-retro-text-dim">
-                Max Iterations
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="maxIterations">Max Iterations</Label>
               <select
                 id="maxIterations"
-                className="retro-select"
+                className="neo-select"
                 value={maxIterations}
                 onChange={(e) => setMaxIterations(Number(e.target.value))}
                 disabled={loading}
@@ -136,7 +131,7 @@ export function ResearchForm() {
           </div>
 
           <div>
-            <p className="mb-2 text-xs text-retro-text-dim">Quick examples:</p>
+            <p className="mb-2 text-sm text-muted-foreground">Quick examples:</p>
             <div className="flex flex-wrap gap-2">
               {EXAMPLE_QUERIES.map((example) => (
                 <button
@@ -144,7 +139,7 @@ export function ResearchForm() {
                   type="button"
                   onClick={() => setQuery(example)}
                   disabled={loading}
-                  className="rounded border border-retro-border px-2 py-1 text-xs text-retro-text-dim transition-colors hover:border-retro-border-bright hover:text-retro-text"
+                  className="rounded border-2 border-black bg-accent px-2 py-1 text-xs shadow-sm transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-md"
                 >
                   {example.slice(0, 40)}...
                 </button>
@@ -152,17 +147,14 @@ export function ResearchForm() {
             </div>
           </div>
 
-          {error && (
-            <div className="retro-panel-inset border-retro-red p-3 text-sm text-retro-red">
-              ERROR: {error}
-            </div>
-          )}
+          {error && <div className="alert-error rounded p-3 text-sm">Error: {error}</div>}
 
-          <RetroButton type="submit" disabled={loading || !query.trim()} className="w-full sm:w-auto">
-            {loading ? "Running Research..." : "▶ Execute Research"}
-          </RetroButton>
+          <Button type="submit" disabled={loading || !query.trim()} className="w-full sm:w-auto">
+            <Play className="size-4" />
+            {loading ? "Running Research..." : "Execute Research"}
+          </Button>
         </form>
-      </RetroCard>
+      </PageCard>
 
       {loading && <ResearchProgress active query={query} />}
 

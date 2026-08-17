@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RetroBadge } from "@/components/ui/RetroBadge";
-import { getHealth, ApiClientError } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
+import { getHealth } from "@/lib/api";
 
 export function HealthBadge() {
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
@@ -14,12 +14,8 @@ export function HealthBadge() {
         const health = await getHealth();
         setAppName(health.app);
         setStatus(health.status === "ok" ? "ok" : "error");
-      } catch (err) {
-        if (err instanceof ApiClientError && err.status === 0) {
-          setStatus("error");
-        } else {
-          setStatus("error");
-        }
+      } catch {
+        setStatus("error");
       }
     }
 
@@ -27,16 +23,16 @@ export function HealthBadge() {
   }, []);
 
   if (status === "loading") {
-    return <RetroBadge variant="info">Checking...</RetroBadge>;
+    return <Badge variant="info">Checking...</Badge>;
   }
 
   if (status === "error") {
-    return <RetroBadge variant="error">Offline</RetroBadge>;
+    return <Badge variant="destructive">Offline</Badge>;
   }
 
   return (
-    <RetroBadge variant="ok" title={appName}>
+    <Badge variant="success" title={appName}>
       Online
-    </RetroBadge>
+    </Badge>
   );
 }

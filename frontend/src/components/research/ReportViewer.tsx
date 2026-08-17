@@ -5,9 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { RetroCard } from "@/components/ui/RetroCard";
-import { RetroButton } from "@/components/ui/RetroButton";
-import { RetroBadge } from "@/components/ui/RetroBadge";
+import { Download, ExternalLink } from "lucide-react";
+import { PageCard } from "@/components/ui/page-card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { downloadReport } from "@/lib/api";
 import type { Report, ResearchResponse } from "@/lib/types";
 
@@ -19,7 +22,6 @@ export function ReportViewer({ data }: ReportViewerProps) {
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"markdown" | "structured" | "sources">("markdown");
 
   const report = data.report;
 
@@ -37,19 +39,19 @@ export function ReportViewer({ data }: ReportViewerProps) {
 
   if (!report) {
     return (
-      <RetroCard title="No Report Generated" badge={<RetroBadge variant="warn">{data.status}</RetroBadge>}>
-        <p className="text-retro-text-dim">
-          Research completed with status <strong className="text-retro-amber">{data.status}</strong> but no
-          report was produced.
+      <PageCard title="No Report Generated" badge={<Badge variant="warning">{data.status}</Badge>}>
+        <p className="text-muted-foreground">
+          Research completed with status <strong className="text-foreground">{data.status}</strong> but
+          no report was produced.
         </p>
         {data.errors.length > 0 && (
-          <ul className="mt-4 space-y-1 text-sm text-retro-red">
+          <ul className="mt-4 space-y-1 text-sm text-destructive">
             {data.errors.map((err) => (
               <li key={err}>• {err}</li>
             ))}
           </ul>
         )}
-      </RetroCard>
+      </PageCard>
     );
   }
 
@@ -57,49 +59,48 @@ export function ReportViewer({ data }: ReportViewerProps) {
 
   return (
     <div className="space-y-6">
-      <RetroCard
+      <PageCard
         title={report.title}
         subtitle={`Session: ${data.session_id} · Generated ${new Date(report.generated_at).toLocaleString()}`}
-        badge={<RetroBadge variant="ok">Complete</RetroBadge>}
+        badge={<Badge variant="success">Complete</Badge>}
       >
-        <p className="mb-4 leading-relaxed text-retro-text">{report.executive_summary}</p>
+        <p className="mb-4 leading-relaxed">{report.executive_summary}</p>
 
         <div className="flex flex-wrap gap-2">
-          <RetroButton onClick={handleExport} disabled={exporting}>
-            {exporting ? "Exporting..." : "⬇ Download DOCX"}
-          </RetroButton>
-          <RetroButton
-            variant="secondary"
-            onClick={() => router.push(`/sessions/${data.session_id}`)}
-          >
+          <Button onClick={handleExport} disabled={exporting}>
+            <Download className="size-4" />
+            {exporting ? "Exporting..." : "Download DOCX"}
+          </Button>
+          <Button variant="secondary" onClick={() => router.push(`/sessions/${data.session_id}`)}>
             View Session State
-          </RetroButton>
-          <Link href={`/stream/${data.session_id}`} className="retro-btn retro-btn-secondary">
+          </Button>
+          <Link
+            href={`/stream/${data.session_id}`}
+            className={cn(buttonVariants({ variant: "outline", size: "default" }))}
+          >
             Stream Status
           </Link>
         </div>
 
-        {exportError && <p className="mt-3 text-sm text-retro-red">{exportError}</p>}
-      </RetroCard>
+        {exportError && <p className="mt-3 text-sm text-destructive">{exportError}</p>}
+      </PageCard>
 
       {(data.errors.length > 0 || data.open_questions.length > 0 || report.limitations.length > 0) && (
-        <RetroCard title="Warnings & Limitations">
+        <PageCard title="Warnings & Limitations">
           {data.errors.length > 0 && (
             <div className="mb-4">
-              <h3 className="mb-2 font-terminal text-lg text-retro-red">Errors</h3>
-              <ul className="space-y-1 text-sm">
+              <h3 className="mb-2 font-head text-base text-destructive">Errors</h3>
+              <ul className="space-y-1 text-sm text-destructive">
                 {data.errors.map((err) => (
-                  <li key={err} className="text-retro-red">
-                    • {err}
-                  </li>
+                  <li key={err}>• {err}</li>
                 ))}
               </ul>
             </div>
           )}
           {data.open_questions.length > 0 && (
             <div className="mb-4">
-              <h3 className="mb-2 font-terminal text-lg text-retro-amber">Open Questions</h3>
-              <ul className="space-y-1 text-sm text-retro-text">
+              <h3 className="mb-2 font-head text-base">Open Questions</h3>
+              <ul className="space-y-1 text-sm">
                 {data.open_questions.map((q) => (
                   <li key={q}>? {q}</li>
                 ))}
@@ -108,77 +109,68 @@ export function ReportViewer({ data }: ReportViewerProps) {
           )}
           {report.limitations.length > 0 && (
             <div>
-              <h3 className="mb-2 font-terminal text-lg text-retro-text-dim">Limitations</h3>
-              <ul className="space-y-1 text-sm text-retro-text-dim">
+              <h3 className="mb-2 font-head text-base text-muted-foreground">Limitations</h3>
+              <ul className="space-y-1 text-sm text-muted-foreground">
                 {report.limitations.map((lim) => (
                   <li key={lim}>— {lim}</li>
                 ))}
               </ul>
             </div>
           )}
-        </RetroCard>
+        </PageCard>
       )}
 
-      <RetroCard title="Report Content">
-        <div className="mb-4 flex flex-wrap gap-2 border-b border-retro-border pb-3">
-          {(["markdown", "structured", "sources"] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`retro-btn px-3 py-1.5 text-xs ${
-                activeTab === tab ? "border-retro-amber text-retro-amber" : ""
-              }`}
-            >
-              {tab === "markdown" ? "Markdown" : tab === "structured" ? "Sections" : "Sources"}
-            </button>
-          ))}
-        </div>
+      <PageCard title="Report Content">
+        <Tabs defaultValue="markdown">
+          <TabsList>
+            <TabsTrigger value="markdown">Markdown</TabsTrigger>
+            <TabsTrigger value="structured">Sections</TabsTrigger>
+            <TabsTrigger value="sources">Sources</TabsTrigger>
+          </TabsList>
 
-        {activeTab === "markdown" && (
-          <div className="markdown-report retro-panel-inset max-h-[70vh] overflow-y-auto p-4 sm:p-6">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{report.markdown || report.title}</ReactMarkdown>
-          </div>
-        )}
+          <TabsContent value="markdown">
+            <div className="markdown-report inset-panel mt-3 max-h-[70vh] overflow-y-auto rounded p-4 sm:p-6">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{report.markdown || report.title}</ReactMarkdown>
+            </div>
+          </TabsContent>
 
-        {activeTab === "structured" && (
-          <div className="space-y-4">
-            {report.sections.map((section) => (
-              <article key={section.heading} className="retro-panel-inset p-4">
-                <h3 className="font-terminal text-lg text-retro-amber">{section.heading}</h3>
-                <div className="markdown-report mt-2">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content}</ReactMarkdown>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+          <TabsContent value="structured">
+            <div className="mt-3 space-y-4">
+              {report.sections.map((section) => (
+                <article key={section.heading} className="inset-panel rounded p-4">
+                  <h3 className="font-head text-lg">{section.heading}</h3>
+                  <div className="markdown-report mt-2">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content}</ReactMarkdown>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </TabsContent>
 
-        {activeTab === "sources" && (
-          <div className="space-y-3">
-            {citations.length === 0 ? (
-              <p className="text-retro-text-dim">No citations recorded.</p>
-            ) : (
-              citations.map((source) => (
-                <SourceCard key={source.id} source={source} />
-              ))
-            )}
-          </div>
-        )}
-      </RetroCard>
+          <TabsContent value="sources">
+            <div className="mt-3 space-y-3">
+              {citations.length === 0 ? (
+                <p className="text-muted-foreground">No citations recorded.</p>
+              ) : (
+                citations.map((source) => <SourceCard key={source.id} source={source} />)
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </PageCard>
     </div>
   );
 }
 
 function SourceCard({ source }: { source: Report["citations"][string] }) {
   return (
-    <article className="retro-panel-inset p-4">
+    <article className="inset-panel rounded p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h4 className="font-terminal text-base text-retro-text-bright">{source.title}</h4>
-        <RetroBadge variant="neutral">{source.source_type}</RetroBadge>
+        <h4 className="font-head text-base">{source.title}</h4>
+        <Badge variant="outline">{source.source_type}</Badge>
       </div>
-      <p className="mt-2 text-sm text-retro-text-dim line-clamp-2">{source.snippet}</p>
-      <div className="mt-2 flex flex-wrap gap-3 text-xs text-retro-text-dim">
+      <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{source.snippet}</p>
+      <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
         {source.credibility_score != null && (
           <span>Credibility: {(source.credibility_score * 100).toFixed(0)}%</span>
         )}
@@ -188,9 +180,9 @@ function SourceCard({ source }: { source: Report["citations"][string] }) {
       {source.quality_flags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {source.quality_flags.map((flag) => (
-            <RetroBadge key={flag} variant="warn">
+            <Badge key={flag} variant="warning">
               {flag}
-            </RetroBadge>
+            </Badge>
           ))}
         </div>
       )}
@@ -198,8 +190,9 @@ function SourceCard({ source }: { source: Report["citations"][string] }) {
         href={source.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-block text-sm text-retro-cyan hover:text-retro-text-bright"
+        className="mt-2 inline-flex items-center gap-1 text-sm text-blue-700 hover:underline"
       >
+        <ExternalLink className="size-3.5" />
         {source.url}
       </a>
     </article>

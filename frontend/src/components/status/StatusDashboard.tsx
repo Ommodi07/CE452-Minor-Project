@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RetroCard } from "@/components/ui/RetroCard";
-import { RetroButton } from "@/components/ui/RetroButton";
-import { RetroBadge } from "@/components/ui/RetroBadge";
 import Link from "next/link";
+import { RefreshCw } from "lucide-react";
+import { PageCard } from "@/components/ui/page-card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { getHealth, getStatus, ApiClientError } from "@/lib/api";
 import { getMappingForEndpoint } from "@/lib/endpoints";
 import { ApiCoverageMap } from "@/components/status/ApiCoverageMap";
@@ -44,69 +45,65 @@ export function StatusDashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-xs text-retro-text-bright sm:text-sm">SYSTEM STATUS</h1>
-          <p className="font-terminal text-lg text-retro-text-dim">
-            GET /health · GET /status
-          </p>
+          <h1 className="font-head text-2xl sm:text-3xl">System Status</h1>
+          <p className="text-sm text-muted-foreground">GET /health · GET /status</p>
         </div>
-        <RetroButton onClick={refresh} disabled={loading}>
-          {loading ? "Refreshing..." : "↻ Refresh"}
-        </RetroButton>
+        <Button onClick={refresh} disabled={loading}>
+          <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+          {loading ? "Refreshing..." : "Refresh"}
+        </Button>
       </div>
 
       {error && (
-        <RetroCard title="Connection Error">
-          <p className="text-retro-red">{error}</p>
-          <p className="mt-2 text-sm text-retro-text-dim">
+        <PageCard title="Connection Error">
+          <p className="text-destructive">{error}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
             Ensure the backend is running at the configured API URL.
           </p>
-        </RetroCard>
+        </PageCard>
       )}
 
       {health && (
-        <RetroCard
-          title="Health Check"
-          badge={<RetroBadge variant="ok">{health.status}</RetroBadge>}
-        >
-          <p className="font-terminal text-xl text-retro-text-bright">{health.app}</p>
-        </RetroCard>
+        <PageCard title="Health Check" badge={<Badge variant="success">{health.status}</Badge>}>
+          <p className="font-head text-xl">{health.app}</p>
+        </PageCard>
       )}
 
       {status && (
         <>
-          <RetroCard
+          <PageCard
             title={status.app_name}
             subtitle={`Environment: ${status.environment}`}
             badge={
-              <RetroBadge variant={status.overall_ok ? "ok" : "error"}>
+              <Badge variant={status.overall_ok ? "success" : "destructive"}>
                 {status.overall_ok ? "All Systems OK" : "Issues Detected"}
-              </RetroBadge>
+              </Badge>
             }
           >
             {lastRefresh && (
-              <p className="text-xs text-retro-text-dim">
+              <p className="text-xs text-muted-foreground">
                 Last checked: {lastRefresh.toLocaleTimeString()}
               </p>
             )}
-          </RetroCard>
+          </PageCard>
 
-          <RetroCard title="Connections">
+          <PageCard title="Connections">
             <div className="grid gap-3 sm:grid-cols-2">
               {status.connections.map((conn) => (
                 <ConnectionCard key={conn.name} connection={conn} />
               ))}
             </div>
-          </RetroCard>
+          </PageCard>
 
-          <RetroCard title="API Endpoints">
+          <PageCard title="API Endpoints">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[500px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-retro-border text-retro-text-dim">
-                    <th className="pb-2 pr-4 font-terminal text-base">Method</th>
-                    <th className="pb-2 pr-4 font-terminal text-base">Path</th>
-                    <th className="pb-2 pr-4 font-terminal text-base">Status</th>
-                    <th className="pb-2 font-terminal text-base">Description</th>
+                  <tr className="border-b-2 border-black text-muted-foreground">
+                    <th className="pb-2 pr-4 font-head">Method</th>
+                    <th className="pb-2 pr-4 font-head">Path</th>
+                    <th className="pb-2 pr-4 font-head">Status</th>
+                    <th className="pb-2 font-head">Description</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -114,37 +111,24 @@ export function StatusDashboard() {
                     const mapping = getMappingForEndpoint(endpoint.method, endpoint.path);
 
                     return (
-                      <tr
-                        key={`${endpoint.method}-${endpoint.path}`}
-                        className="border-b border-retro-border/50"
-                      >
+                      <tr key={`${endpoint.method}-${endpoint.path}`} className="border-b border-black/20">
                         <td className="py-3 pr-4">
-                          <RetroBadge
-                            variant={
-                              endpoint.method === "GET"
-                                ? "info"
-                                : endpoint.method === "POST"
-                                  ? "ok"
-                                  : "neutral"
-                            }
-                          >
+                          <Badge variant={endpoint.method === "GET" ? "info" : "warning"}>
                             {endpoint.method}
-                          </RetroBadge>
+                          </Badge>
                         </td>
-                        <td className="py-3 pr-4 font-mono text-xs text-retro-cyan">
-                          {endpoint.path}
-                        </td>
+                        <td className="py-3 pr-4 font-mono text-xs">{endpoint.path}</td>
                         <td className="py-3 pr-4">
-                          <RetroBadge variant={endpoint.active ? "ok" : "error"}>
+                          <Badge variant={endpoint.active ? "success" : "destructive"}>
                             {endpoint.active ? "Active" : "Inactive"}
-                          </RetroBadge>
+                          </Badge>
                         </td>
-                        <td className="py-3 text-retro-text-dim">
+                        <td className="py-3 text-muted-foreground">
                           {endpoint.description}
                           {mapping && (
                             <Link
                               href={mapping.frontendRoute.replace(/\[.*?\]/g, "")}
-                              className="mt-1 block font-terminal text-sm text-retro-amber hover:text-retro-text-bright"
+                              className="mt-1 block font-head text-sm text-foreground hover:underline"
                             >
                               → {mapping.frontendLabel}
                             </Link>
@@ -156,7 +140,7 @@ export function StatusDashboard() {
                 </tbody>
               </table>
             </div>
-          </RetroCard>
+          </PageCard>
 
           <ApiCoverageMap />
         </>
@@ -166,17 +150,21 @@ export function StatusDashboard() {
 }
 
 function ConnectionCard({ connection }: { connection: ConnectionStatus }) {
-  const variant = connection.active ? "ok" : connection.configured ? "error" : "warn";
+  const variant = connection.active
+    ? "success"
+    : connection.configured
+      ? "destructive"
+      : "warning";
 
   return (
-    <div className="retro-panel-inset p-4">
+    <div className="inset-panel rounded p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-terminal text-lg text-retro-text-bright">{connection.name}</h3>
-        <RetroBadge variant={variant}>
+        <h3 className="font-head text-base">{connection.name}</h3>
+        <Badge variant={variant}>
           {connection.active ? "Active" : connection.configured ? "Down" : "Not Configured"}
-        </RetroBadge>
+        </Badge>
       </div>
-      <p className="mt-2 text-xs text-retro-text-dim">{connection.details}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{connection.details}</p>
     </div>
   );
 }
