@@ -144,22 +144,36 @@ def _check_vector_store() -> _CheckResult:
 
 
 def _check_state_stores() -> list[ConnectionStatus]:
-    report_store = get_report_store()
-    session_store = get_session_store()
     using_postgres = bool(settings.database_url)
+
+    report_status = ConnectionStatus(
+        name="report_store",
+        active=True,
+        configured=using_postgres,
+        details="Using PostgreSQL-backed store." if using_postgres else "Using in-memory store.",
+    )
+    session_status = ConnectionStatus(
+        name="session_store",
+        active=True,
+        configured=using_postgres,
+        details="Using PostgreSQL-backed store." if using_postgres else "Using in-memory store.",
+    )
+
+    try:
+        get_report_store()
+    except Exception as exc:  # noqa: BLE001 - surfaced in status payload
+        report_status.active = False
+        report_status.details = f"Store initialization failed: {exc}"
+
+    try:
+        get_session_store()
+    except Exception as exc:  # noqa: BLE001 - surfaced in status payload
+        session_status.active = False
+        session_status.details = f"Store initialization failed: {exc}"
+
     return [
-        ConnectionStatus(
-            name="report_store",
-            active=True,
-            configured=using_postgres,
-            details="Using PostgreSQL-backed store." if using_postgres else "Using in-memory store.",
-        ),
-        ConnectionStatus(
-            name="session_store",
-            active=True,
-            configured=using_postgres,
-            details="Using PostgreSQL-backed store." if using_postgres else "Using in-memory store.",
-        ),
+        report_status,
+        session_status,
     ]
 
 

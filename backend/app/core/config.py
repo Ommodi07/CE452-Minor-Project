@@ -27,5 +27,4 @@ class Settings(BaseSettings):
     # Persistence (placeholder — used once checkpointer.py / DB repos are implemented)
     database_url: str | None = None
 
-
 settings = Settings()
