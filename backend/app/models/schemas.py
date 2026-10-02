@@ -8,7 +8,7 @@ DB repositories, and the frontend's generated TypeScript types.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -92,7 +92,7 @@ class SourceDoc(BaseModel):
     url: str
     title: str
     snippet: str
-    retrieved_at: datetime = Field(default_factory=datetime.utcnow)
+    retrieved_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source_type: SourceType = SourceType.OTHER
     credibility_score: Optional[float] = None
     # Pointer to full text in a vector store / blob store. Full content is
@@ -138,7 +138,7 @@ class Report(BaseModel):
     sections: list[ReportSection] = Field(default_factory=list)
     citations: dict[str, SourceDoc] = Field(default_factory=dict)
     limitations: list[str] = Field(default_factory=list)
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # Fully assembled markdown document (title, exec summary, sections with
     # inline [N] citation markers, limitations, and a References list) — see
     # app/graph/nodes/writer.py. `sections`/`citations` above stay structured

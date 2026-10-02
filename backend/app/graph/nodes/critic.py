@@ -239,6 +239,7 @@ def _assess_sub_questions(
 
 async def critic_node(state: GraphState) -> dict:
     errors: list[str] = []
+    verification_failed = False
     raw_source_docs = state.get("source_docs", [])
 
     # Local-only cross-branch dedup for this node's own analysis (see module
@@ -272,12 +273,21 @@ async def critic_node(state: GraphState) -> dict:
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Critic LLM call failed, using fallback verification: %s", exc)
                 errors.append(f"critic: LLM call failed, used fallback verification ({exc})")
+                verification_failed = True
                 verified_claims = _fallback_verified_claims(state)
         else:
             verified_claims = _fallback_verified_claims(state)
 
     sub_questions = state.get("sub_questions", [])
-    critic_feedback, open_questions, reflection_targets = _assess_sub_questions(sub_questions, verified_claims)
+    critic_feedback, open_questions, reflection_targets = _assess_sub_questions(
+        sub_questions, verified_claims
+    )
+
+    # Fallback verification is intentionally conservative and marks claims as
+    # unverified. Do not interpret that provider outage as a research gap and
+    # launch another expensive fan-out pass.
+    if verification_failed:
+        reflection_targets = []
 
     # Only bother generating refined queries if there's actually going to be
     # another pass — skip the (LLM-call) cost if we're about to hit the

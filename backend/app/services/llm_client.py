@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 
 from app.models.schemas import Claim, ResearchAngle, ResearchMethod, SourceDoc, SubQuestion, VerifiedClaim
-from app.services.gemini_api import GeminiAPIClient
+from app.services.gemini_api import GeminiAPIClient, GroqAPIClient, _coerce_json
 
 logger = logging.getLogger(__name__)
 
@@ -13,10 +13,61 @@ class LLMClient:
     def __init__(self, model: str | None = None):
         self.model = model
         self._client = GeminiAPIClient(model=model)
+        self._groq = GroqAPIClient()
 
     @property
     def is_configured(self) -> bool:
-        return self._client.is_configured
+        return self._client.is_configured or self._groq.is_configured
+
+    async def _generate_json(self, *, system_prompt: str, user_prompt: str, max_output_tokens: int) -> dict:
+        errors: list[str] = []
+        if self._client.is_configured:
+            try:
+                return await self._client.generate_json(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    max_output_tokens=max_output_tokens,
+                )
+            except Exception as exc:  # noqa: BLE001 - try the configured backup provider
+                logger.warning("Gemini request failed, trying Groq fallback: %s", exc)
+                errors.append(f"Gemini: {exc}")
+        if self._groq.is_configured:
+            try:
+                text = await self._groq.generate(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    max_output_tokens=max_output_tokens,
+                    json_mode=True,
+                )
+                return _coerce_json(text)
+            except Exception as exc:  # noqa: BLE001 - caller supplies static fallback
+                logger.warning("Groq request failed, using static fallback: %s", exc)
+                errors.append(f"Groq: {exc}")
+        raise RuntimeError("All configured LLM providers failed. " + " | ".join(errors))
+
+    async def _generate_text(self, *, system_prompt: str, user_prompt: str, max_output_tokens: int) -> str:
+        errors: list[str] = []
+        if self._client.is_configured:
+            try:
+                return await self._client.generate_text(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    max_output_tokens=max_output_tokens,
+                )
+            except Exception as exc:  # noqa: BLE001 - try the configured backup provider
+                logger.warning("Gemini request failed, trying Groq fallback: %s", exc)
+                errors.append(f"Gemini: {exc}")
+        if self._groq.is_configured:
+            try:
+                return await self._groq.generate(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    max_output_tokens=max_output_tokens,
+                )
+            except Exception as exc:  # noqa: BLE001 - caller supplies static fallback
+                logger.warning("Groq request failed, using static fallback: %s", exc)
+                errors.append(f"Groq: {exc}")
+        raise RuntimeError("All configured LLM providers failed. " + " | ".join(errors))
 
     async def generate_sub_questions(
         self, *, query: str, system_prompt: str, user_prompt: str
@@ -26,7 +77,7 @@ class LLMClient:
                 "GEMINI_API_KEY is not configured; cannot call generate_sub_questions()."
             )
 
-        payload = await self._client.generate_json(
+        payload = await self._generate_json(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             max_output_tokens=2000,
@@ -60,7 +111,7 @@ class LLMClient:
         if not self.is_configured:
             raise RuntimeError("GEMINI_API_KEY is not configured; cannot call extract_claims().")
 
-        payload = await self._client.generate_json(
+        payload = await self._generate_json(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             max_output_tokens=1500,
@@ -95,7 +146,7 @@ class LLMClient:
                 "GEMINI_API_KEY is not configured; cannot call extract_and_verify_claims()."
             )
 
-        payload = await self._client.generate_json(
+        payload = await self._generate_json(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             max_output_tokens=4000,
@@ -137,7 +188,7 @@ class LLMClient:
         if not self.is_configured:
             raise RuntimeError("GEMINI_API_KEY is not configured; cannot call refine_search_query().")
 
-        payload = await self._client.generate_json(
+        payload = await self._generate_json(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             max_output_tokens=300,
@@ -152,7 +203,7 @@ class LLMClient:
         if not self.is_configured:
             raise RuntimeError("GEMINI_API_KEY is not configured; cannot call complete().")
 
-        text = await self._client.generate_text(
+        text = await self._generate_text(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             max_output_tokens=400,

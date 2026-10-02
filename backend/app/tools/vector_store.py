@@ -16,6 +16,29 @@ from app.services.gemini_api import GeminiAPIClient
 logger = logging.getLogger(__name__)
 
 
+def _chunk_text(text: str, chunk_size: int = 1200, overlap: int = 200) -> list[str]:
+    """Split source text into bounded, overlapping chunks for retrieval."""
+    normalized = re.sub(r"\s+", " ", text).strip()
+    if not normalized:
+        return []
+    if len(normalized) <= chunk_size:
+        return [normalized]
+
+    chunks: list[str] = []
+    start = 0
+    while start < len(normalized):
+        end = min(start + chunk_size, len(normalized))
+        if end < len(normalized):
+            boundary = normalized.rfind(" ", start + chunk_size // 2, end)
+            if boundary > start:
+                end = boundary
+        chunks.append(normalized[start:end].strip())
+        if end >= len(normalized):
+            break
+        start = max(end - overlap, start + 1)
+    return chunks
+
+
 class _HashEmbeddingFallback:
     def __init__(self, dimension: int = 256):
         self.dimension = dimension
@@ -58,13 +81,21 @@ class ChromaVectorStore(VectorStore):
         return self._fallback.embed(text)
 
     async def upsert(self, doc_id: str, text: str, metadata: dict | None = None) -> None:
-        embedding = await self._embed(text)
+        chunks = _chunk_text(text)
+        if not chunks:
+            return
+        embeddings = [await self._embed(chunk) for chunk in chunks]
+        chunk_ids = [doc_id if len(chunks) == 1 else f"{doc_id}:chunk-{index}" for index in range(len(chunks))]
+        chunk_metadata = [
+            {**(metadata or {}), "chunk_index": index, "chunk_count": len(chunks)}
+            for index in range(len(chunks))
+        ]
         await asyncio.to_thread(
             self._collection.upsert,
-            ids=[doc_id],
-            documents=[text],
-            metadatas=[metadata or {}],
-            embeddings=[embedding],
+            ids=chunk_ids,
+            documents=chunks,
+            metadatas=chunk_metadata,
+            embeddings=embeddings,
         )
 
     async def query(self, text: str, top_k: int = 5) -> list[str]:

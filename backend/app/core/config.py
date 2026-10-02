@@ -14,8 +14,11 @@ class Settings(BaseSettings):
 
     # LLM provider config.
     gemini_api_key: str | None = None
-    default_model: str = "gemini-2.0-flash"
-    embedding_model: str = "text-embedding-004"
+    default_model: str = "gemini-2.5-flash"
+    embedding_model: str = "gemini-embedding-001"
+    embedding_dimension: int = 256
+    groq_api_key: str | None = None
+    groq_model: str = "openai/gpt-oss-20b"
 
     # Vector store
     chroma_path: str | None = None

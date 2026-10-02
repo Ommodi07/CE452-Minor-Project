@@ -1,65 +1,156 @@
-# AI Research Analyst — Backend Skeleton
+# AI Research Analyst Backend
 
-FastAPI + LangGraph backend implementing the Planner → Researcher(s) → Critic → Writer
-multi-agent flow described in the architecture doc.
+## 1. Problem Statement
 
-## Status
+Researching a topic manually is slow and difficult to verify. A researcher must
+break a broad question into smaller questions, find information from multiple
+sources, compare claims, identify missing evidence, and finally organize the
+results into a readable report. Repeating these steps for every topic also makes
+the process inconsistent and difficult to scale.
 
-This is a **wired-up backend**: the graph compiles, runs end-to-end, the
-`/research` endpoint works, Gemini powers the agent LLM calls, PostgreSQL can
-persist sessions/reports when configured, and Chroma can store source-doc
-embeddings for retrieval.
+## 2. Proposed Solution
 
-## Run it
+This project provides a FastAPI backend for an AI-assisted research analyst.
+It uses a LangGraph workflow containing specialized agents:
+
+1. **Planner** breaks the user's question into focused sub-questions.
+2. **Researcher** searches the web, fetches relevant information, extracts
+   sources and claims, and can store source embeddings in Chroma.
+3. **Critic** reviews the collected evidence, identifies gaps, and requests
+   targeted additional research when needed.
+4. **Writer** combines the evidence into an executive summary, report sections,
+   citations, and limitations.
+
+The workflow is designed to improve research quality by using multiple research
+tasks and a review loop instead of asking one model to produce an answer in a
+single step. The loop has a configurable maximum iteration count so that a
+request cannot run indefinitely.
+
+## 3. Current Functionality
+
+### Research workflow
+
+- Runs the Planner -> Researcher(s) -> Critic -> Writer graph.
+- Fans out research work across planned sub-questions and joins the results.
+- Performs targeted re-research when the critic detects evidence gaps.
+- Returns a structured report with a title, executive summary, sections,
+  citations, limitations, and Markdown output.
+- Uses Gemini as the primary LLM provider, with configuration for Groq.
+- Uses DuckDuckGo search and web fetching tools for source collection.
+- Supports Chroma source-document indexing and retrieval configuration.
+- Returns a static fallback report when the live research providers fail.
+
+### API and persistence
+
+- `GET /health` provides a basic health check.
+- `POST /research` runs a research request synchronously.
+- `POST /sessions` creates a research session.
+- `GET /sessions/{session_id}` retrieves saved session state.
+- `GET /stream/{session_id}` sends Server-Sent Events while a saved result is
+  being awaited.
+- `GET /research/{job_id}/export` downloads a completed report as a DOCX file.
+- `GET /status` checks the configuration and availability of major dependencies.
+- Sessions and reports can be persisted through the configured stores.
+- CORS is configured for a frontend running at `http://localhost:3000` by
+  default.
+
+### Workflow shape
+
+```text
+START -> planner -> researcher(s) -> critic -> writer -> END
+                                      ^          |
+                                      +----------+
+                                  targeted retry
+```
+
+## 4. Setup and Usage
+
+### Requirements
+
+- Python 3.11 or newer
+- A Gemini API key, or the configured alternative LLM provider
+- PostgreSQL when database persistence is required
+- Chroma storage when vector retrieval is required
+
+### Installation
 
 ```bash
 pip install -e ".[dev]"
-cp .env.example .env   # fill in GEMINI_API_KEY, DATABASE_URL, and CHROMA_PATH
+```
+
+Create a local environment file from `.env.example` and configure at least the
+LLM credentials. Set `DATABASE_URL` and `CHROMA_PATH` when persistence and
+vector storage are enabled.
+
+Start the API with:
+
+```bash
 uvicorn app.main:app --reload
 ```
 
-Then:
+Useful documentation endpoints:
+
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
+
+Example request:
 
 ```bash
-curl -X POST http://localhost:8000/research \
+curl -X POST http://127.0.0.1:8000/research \
   -H "Content-Type: application/json" \
-  -d '{"query": "impact of remote work on urban housing markets"}'
+  -d '{"query":"Impact of remote work on urban housing markets"}'
 ```
 
-## Graph shape
+The complete endpoint reference is available in [`API.md`](API.md).
 
-```
-START -> planner -> (Send fan-out) -> researcher(s) -> critic
-                                                           |
-                                    (gaps? and iterations < max) --+--> writer -> END
-                                             |
-                                             +--> back to researcher (targeted retry)
-```
+## 5. Limitations of the Current Version
 
-Verify the compiled shape any time with:
+- The research endpoint waits for the complete graph run, so long-running
+  requests can feel slow to clients.
+- The streaming endpoint currently polls persisted session and report state. It
+  does not yet expose true node-by-node LangGraph execution updates.
+- LangGraph PostgreSQL checkpointing is not fully implemented, so interrupted
+  runs cannot reliably resume from their previous graph state.
+- Research quality depends on external LLM, search, and web-fetch providers.
+  Provider outages, rate limits, blocked pages, and incomplete sources can
+  reduce report quality.
+- Source verification and claim comparison are still basic; the critic does
+  not yet provide comprehensive cross-source fact checking.
+- Chroma retrieval is available but is not yet used throughout the workflow as
+  a strong evidence-retrieval layer.
+- The fallback report informs the user that live research failed, but it is not
+  a substitute for a research-backed report.
+- There is no authentication, authorization, per-user quota, or tenant
+  isolation in the current backend.
+- Sessions and reports do not yet provide a complete lifecycle policy for
+  cleanup, versioning, or multiple reports per session.
+- Search results and generated content need human review before being used for
+  academic, legal, medical, financial, or other high-impact decisions.
 
-```bash
-python3 -c "from app.graph.graph import get_compiled_graph; print(get_compiled_graph().get_graph().draw_mermaid())"
-```
+## 6. Planned Improvements
 
-## What's real vs. placeholder
+1. Implement a PostgreSQL-backed LangGraph checkpointer for resumable runs and
+   reliable state inspection.
+2. Replace synchronous research execution with background jobs and real
+   `graph.astream()` progress events.
+3. Improve critic behavior with cross-source claim verification, source
+   credibility checks, contradiction detection, and stronger citation mapping.
+4. Use Chroma retrieval more deeply to ground follow-up research and writing in
+   the collected evidence.
+5. Improve writer output with better section grouping, executive-summary
+   synthesis, citation formatting, and duplicate-claim removal.
+6. Add authentication, authorization, rate limiting, usage quotas, and
+   per-user session isolation.
+7. Add production observability, structured metrics, tracing, retry policies,
+   and clearer provider error reporting.
+8. Add report versioning, session cleanup, configurable retention, and support
+   for multiple export formats such as PDF and Markdown files.
+9. Expand automated tests for provider failures, persistence failures,
+   concurrent sessions, streaming behavior, and end-to-end report quality.
 
-| Piece | Status |
-|---|---|
-| `app/models/schemas.py` | Real — SubQuestion, SourceDoc, Claim, VerifiedClaim, Report |
-| `app/graph/state.py` | Real — `GraphState` TypedDict with `operator.add` reducers on `source_docs`/`claims` |
-| `app/graph/graph.py`, `routing.py` | Real — compiled graph, `Send` fan-out/fan-in, critic loop-back with iteration cap |
-| `app/graph/nodes/*.py` | Real graph behavior, with fallback paths for missing config |
-| `app/api/routes/research.py` | Real — synchronous `POST /research`, runs the graph to completion and persists results |
-| `app/api/routes/stream.py` | Stub — 501, needs `graph.astream(..., stream_mode="updates")` + SSE |
-| `app/api/routes/sessions.py` | Real basic session persistence |
-| `app/tools/*`, `app/services/llm_client.py` | Gemini-backed LLM + DuckDuckGo search + Chroma indexing |
-| `app/graph/checkpointer.py`, `app/db/*` | PostgreSQL-backed stores, with checkpointer still pending |
+## 7. Project Status
 
-## Suggested next steps, in order
-
-1. Add a Postgres-backed LangGraph checkpointer (`app/graph/checkpointer.py`) so runs are resumable by `session_id`.
-2. Give `critic.py` real cross-source verification and richer Chroma retrieval usage.
-3. Give `writer.py` real section grouping + executive summary synthesis.
-4. Swap `/research` from synchronous `ainvoke` to `astream` + implement `stream.py`
-   so the frontend graph-visualizer gets live node-by-node updates.
+The current version is a functional backend prototype. The core graph executes
+end to end and exposes research, persistence, status, streaming, and export
+interfaces, but production hardening, stronger evidence verification, true
+real-time progress, and secure multi-user operation remain future work.

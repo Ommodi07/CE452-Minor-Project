@@ -9,6 +9,7 @@ import httpx
 from app.core.config import settings
 
 _GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+_GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 
 def _extract_text(payload: dict) -> str:
@@ -61,7 +62,11 @@ class GeminiAPIClient:
 
         url = f"{_GEMINI_BASE_URL}{path}"
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(url, params={"key": self.api_key}, json=payload)
+            response = await client.post(
+                url,
+                headers={"x-goog-api-key": self.api_key},
+                json=payload,
+            )
             response.raise_for_status()
             return response.json()
 
@@ -107,7 +112,10 @@ class GeminiAPIClient:
 
     async def embed_text(self, text: str, *, model: str | None = None) -> list[float]:
         embedding_model = model or settings.embedding_model
-        payload = {"content": {"parts": [{"text": text}]}}
+        payload = {
+            "content": {"parts": [{"text": text}]},
+            "outputDimensionality": settings.embedding_dimension,
+        }
         response = await self._post(f"/models/{embedding_model}:embedContent", payload)
 
         embedding = response.get("embedding") or {}
@@ -115,3 +123,56 @@ class GeminiAPIClient:
         if not values:
             raise RuntimeError("Gemini embedding response did not contain values.")
         return [float(value) for value in values]
+
+
+@dataclass(slots=True)
+class GroqAPIClient:
+    """OpenAI-compatible Groq client used when Gemini is unavailable."""
+
+    model: str | None = None
+    api_key: str | None = None
+
+    def __post_init__(self) -> None:
+        self.model = self.model or settings.groq_model
+        self.api_key = self.api_key or settings.groq_api_key
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.api_key)
+
+    async def generate(self, *, system_prompt: str, user_prompt: str, max_output_tokens: int, json_mode: bool = False) -> str:
+        if not self.api_key:
+            raise RuntimeError("GROQ_API_KEY is not configured.")
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.2,
+            "max_tokens": max_output_tokens,
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{_GROQ_BASE_URL}/chat/completions",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json=payload,
+            )
+            if response.is_error:
+                detail = response.text[:1000]
+                raise httpx.HTTPStatusError(
+                    f"Groq returned {response.status_code}: {detail}",
+                    request=response.request,
+                    response=response,
+                )
+            result = response.json()
+
+        choices = result.get("choices") or []
+        content = ((choices[0].get("message") or {}).get("content") if choices else "")
+        if not content:
+            raise RuntimeError("Groq response contained no text content.")
+        return content
