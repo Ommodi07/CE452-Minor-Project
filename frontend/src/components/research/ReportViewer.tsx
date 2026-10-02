@@ -44,13 +44,6 @@ export function ReportViewer({ data }: ReportViewerProps) {
           Research completed with status <strong className="text-foreground">{data.status}</strong> but
           no report was produced.
         </p>
-        {data.errors.length > 0 && (
-          <ul className="mt-4 space-y-1 text-sm text-destructive">
-            {data.errors.map((err) => (
-              <li key={err}>• {err}</li>
-            ))}
-          </ul>
-        )}
       </PageCard>
     );
   }
@@ -84,41 +77,6 @@ export function ReportViewer({ data }: ReportViewerProps) {
 
         {exportError && <p className="mt-3 text-sm text-destructive">{exportError}</p>}
       </PageCard>
-
-      {(data.errors.length > 0 || data.open_questions.length > 0 || report.limitations.length > 0) && (
-        <PageCard title="Warnings & Limitations">
-          {data.errors.length > 0 && (
-            <div className="mb-4">
-              <h3 className="mb-2 font-head text-base text-destructive">Errors</h3>
-              <ul className="space-y-1 text-sm text-destructive">
-                {data.errors.map((err) => (
-                  <li key={err}>• {err}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {data.open_questions.length > 0 && (
-            <div className="mb-4">
-              <h3 className="mb-2 font-head text-base">Open Questions</h3>
-              <ul className="space-y-1 text-sm">
-                {data.open_questions.map((q) => (
-                  <li key={q}>? {q}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {report.limitations.length > 0 && (
-            <div>
-              <h3 className="mb-2 font-head text-base text-muted-foreground">Limitations</h3>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                {report.limitations.map((lim) => (
-                  <li key={lim}>— {lim}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </PageCard>
-      )}
 
       <PageCard title="Report Content">
         <Tabs defaultValue="markdown">
@@ -158,6 +116,31 @@ export function ReportViewer({ data }: ReportViewerProps) {
           </TabsContent>
         </Tabs>
       </PageCard>
+
+      {(data.open_questions.length > 0 || report.limitations.length > 0) && (
+        <PageCard title="Notes">
+          {data.open_questions.length > 0 && (
+            <div className={report.limitations.length > 0 ? "mb-4" : undefined}>
+              <h3 className="mb-2 font-head text-base">Open Questions</h3>
+              <ul className="space-y-1 text-sm">
+                {data.open_questions.map((question) => (
+                  <li key={question}>? {question}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {report.limitations.length > 0 && (
+            <div>
+              <h3 className="mb-2 font-head text-base text-muted-foreground">Limitations</h3>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                {report.limitations.map((limitation) => (
+                  <li key={limitation}>- {limitation}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </PageCard>
+      )}
     </div>
   );
 }
